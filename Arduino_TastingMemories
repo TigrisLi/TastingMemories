@@ -1,0 +1,64 @@
+  #include <Stepper.h>
+  #include <Servo.h>
+
+  int stepIN1Pin = 8;         
+  int stepIN2Pin = 9;
+  int stepIN3Pin = 10;
+  int stepIN4Pin = 11;
+  int stepsPerRevolution = 2048; // amount of steps per revolution
+  Stepper myStepper(stepsPerRevolution, stepIN1Pin, stepIN3Pin, stepIN2Pin, stepIN4Pin);
+
+  const int button1Pin = 2;  // pushbutton 1 pin for clockwise rotation
+  const int button2Pin = 3;  // pushbutton 2 pin for counter clockwise rotation
+
+  Servo servo;
+  int pos = 0;  // current angle of servo motor
+
+  const float SensorOffset = 50.0;
+  const int airPressure = A1;
+
+  int currentSensorState;
+  int lastSensorState;
+  unsigned long readTimer;
+
+  void setup() {
+    Serial.begin(9600);
+    servo.attach(5);
+
+    pinMode(airPressure, INPUT);
+    pinMode(button1Pin, INPUT);
+    pinMode(button2Pin, INPUT);
+    myStepper.setSpeed(15);
+  }
+
+  void loop() {
+    unsigned long currentMillis = millis();
+    currentSensorState = analogRead(airPressure);
+
+    if (lastSensorState != currentSensorState) {
+      lastSensorState - currentSensorState;
+      readTimer = currentMillis;
+    }
+    if (readTimer > 0 && currentMillis - readTimer >= 8000) {   // check if timing and if timing finished
+      readTimer = 0;  // reset Timer
+      if (currentSensorState < 300) {   // when breathing is off for 8 seconds
+        myStepper.step(stepsPerRevolution/4);   // turn clockwise
+        delay(1000);
+      } else if (currentSensorState > 300) {   // breathing is detected
+          myStepper.step(stepsPerRevolution/4);
+          delay(1000);
+          for (pos = 0; pos <= 50; pos += 1) { // goes from 0 degrees to 50 degrees
+          servo.write(pos);
+          delay(15);
+        }
+        for (pos = 50; pos >= 0; pos -= 1) { // goes from 50 degrees to 0 degrees
+          servo.write(pos);
+          delay(15);
+        }
+      }
+    }
+
+    // Air Pressure; breath measure
+    float airSensorValue = (analogRead(A1)-SensorOffset)/100; // calculate in kPa
+    
+  }
